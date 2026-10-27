@@ -1,15 +1,34 @@
-__pycache__/
-*.pyc
+
+# Jupyter checkpoints
 .ipynb_checkpoints/
 
+# Python virtual environments
 .venv/
 venv/
 env/
 
-.env
+# Python cache
+__pycache__/
+*.py[cod]
 
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Model artifacts (exclude trained models)
 *.pkl
 *.joblib
 
-data/raw/*
-data/processed/*
+# Datasets — uncomment if you don't want to upload CSV data
+# data/raw/*
+# data/processed/*
+# src/*.csv
+
+# Generated output
+src/toxiguard_output/
+
+# Editor and OS files
+.vscode/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ToxiGuard — Marine Domoic Acid Risk Assessment</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <script type="module" src="app.js"></script>
+</head>
+<body>
+  <button class="menu-btn" id="menuBtn" aria-label="Open menu">☰</button>
+  <aside class="sidebar" id="sidebar">
+    <div class="brand"><span class="logo">◈</span><div><strong>ToxiGuard</strong><small>Domoic Acid Risk</small></div></div>
+    <nav id="nav">
+      <a href="#dashboard" data-page="dashboard">Dashboard</a>
+      <a href="#predict" data-page="predict">Risk Prediction</a>
+      <a href="#dataset" data-page="dataset">Dataset Analysis</a>
+      <a href="#performance" data-page="performance">Model Performance</a>
+      <a href="#about" data-page="about">About</a>
+    </nav>
+    <div class="side-foot">Prototype · demo data only</div>
+  </aside>
+
+  <main>
+    <div class="demo-banner" id="demoBanner">DEMO DATA — placeholder values for layout design. Not real measurements or model output.</div>
+
+    <section class="page" id="page-dashboard">
+      <h1>Dashboard</h1>
+      <p class="sub">Overview of the monitoring dataset and model status.</p>
+      <div class="cards" id="statCards"></div>
+      <div class="panel"><h2>Risk-label split</h2><div class="chart-wrap"><canvas id="dashChart"></canvas></div></div>
+    </section>
+
+    <section class="page" id="page-predict">
+      <h1>Risk Prediction</h1>
+      <p class="sub">Enter sample measurements. The form sends a JSON request to the backend <code id="endpointLabel"></code>.</p>
+      <form id="predictForm" class="panel" novalidate>
+        <h2>Environmental measurements</h2>
+        <div class="grid" id="numericFields"></div>
+        <h2>Sample details</h2>
+        <div class="grid" id="categoricalFields"></div>
+        <div class="actions">
+          <button type="submit" class="btn-primary" id="predictBtn">Predict Risk</button>
+          <button type="button" class="btn-ghost" id="previewBtn">Preview result layout (demo)</button>
+          <button type="reset" class="btn-ghost">Reset</button>
+        </div>
+      </form>
+      <div id="result" class="panel" hidden></div>
+    </section>
+
+    <section class="page" id="page-dataset">
+      <h1>Dataset Analysis</h1>
+      <p class="sub">Distribution of risk labels and environmental measurements.</p>
+      <div class="two-col">
+        <div class="panel"><h2>Risk-label distribution</h2><div class="chart-wrap"><canvas id="riskChart"></canvas></div></div>
+        <div class="panel"><h2>Mean measurement by risk class</h2><div class="chart-wrap"><canvas id="meanChart"></canvas></div></div>
+      </div>
+      <div class="panel"><h2>Chlorophyll-a distribution</h2><div class="chart-wrap"><canvas id="chlChart"></canvas></div></div>
+    </section>
+
+    <section class="page" id="page-performance">
+      <h1>Model Performance</h1>
+      <p class="sub">Values come from <code>js/config.js</code>. Replace the empty values with your evaluation results.</p>
+      <div class="panel"><h2>Regressor (concentration)</h2><div class="cards" id="regMetrics"></div></div>
+      <div class="panel"><h2>Classifier (risk class)</h2><div class="cards" id="clsMetrics"></div></div>
+    </section>
+
+    <section class="page" id="page-about">
+      <h1>About</h1>
+      <div class="panel prose">
+        <h2>Project</h2>
+        <p>ToxiGuard is a university data science project for marine environmental monitoring. It helps screen shellfish sampling conditions for domoic acid risk, a toxin made by some marine algae.</p>
+        <h2>Method</h2>
+        <p>Two Random Forest models are planned: a classifier that labels a sample LOW or HIGH risk, and a regressor that estimates concentration in mg/kg. The estimate is shown only when the sample is classed as high risk.</p>
+        <h2>Data limits</h2>
+        <p>Results depend on the training data: its location, season, species and sampling methods. Samples unlike the training data can give unreliable output. Small or uneven classes can also hide weak spots.</p>
+        <h2>Estimates are not lab results</h2>
+        <p><strong>Model output is an estimate, not a laboratory measurement.</strong> It must not be used alone for food safety, harvest or public health decisions. Confirm with approved laboratory testing.</p>
+        <h2>Status</h2>
+        <p>The models are <strong>not connected</strong> in this prototype. All numbers shown on the dashboard are labelled demo data.</p>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
