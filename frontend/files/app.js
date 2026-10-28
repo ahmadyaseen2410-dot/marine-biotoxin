@@ -21,15 +21,39 @@ $("#menuBtn").onclick = () => $("#sidebar").classList.toggle("open");
 const card = (label, value, cls = "", tag = "") =>
   `<div class="card ${cls}"><div class="label">${label}</div><div class="value">${value}</div>${tag ? `<div class="tag">${tag}</div>` : ""}</div>`;
 
-function renderDashboard() {
-  const d = DEMO_DATASET, tag = CONFIG.USE_DEMO_DATA ? "demo data" : "";
-  $("#statCards").innerHTML =
-    card("Total records", d.total.toLocaleString(), "", tag) +
-    card("High-risk records", d.high.toLocaleString(), "high", tag) +
-    card("Low-risk records", d.low.toLocaleString(), "low", tag) +
-    card("Model status", `<span class="dot"></span>Not connected`, "", "Classifier + regressor pending");
+
+async function renderDashboard() {
+  const d = DEMO_DATASET;
+  const tag = CONFIG.USE_DEMO_DATA ? "Demo data" : "";
+
+  const renderCards = (status, detail) => {
+    $("#statCards").innerHTML =
+      card("Total records", d.total.toLocaleString(), "", tag) +
+      card("High-risk records", d.high.toLocaleString(), "high", tag) +
+      card("Low-risk records", d.low.toLocaleString(), "low", tag) +
+      card("Model status", status, "", detail);
+  };
+
+  renderCards("Checking…", "Connecting to backend");
   doughnut("dashChart");
+
+  try {
+    const response = await fetch(`${CONFIG.API_BASE_URL}/`);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+    const data = await response.json();
+
+    if (data.status !== "ready") {
+      renderCards("Not ready", (data.missing_assets || []).join(", ") || "Backend assets unavailable");
+    } else {
+      renderCards("Connected", "Backend assets loaded");
+    }
+  } catch (error) {
+    renderCards("Disconnected", "Could not reach the backend");
+    console.error("Backend connection failed:", error);
+  }
 }
+
 
 // ----- Charts -----
 const charts = {};
@@ -46,10 +70,86 @@ function renderDataset() {
 }
 
 // ----- Performance -----
-function renderPerformance() {
-  const build = (obj) => Object.entries(obj).map(([k, v]) => card(k, fmt(v), "", v === null ? "not set" : "")).join("");
-  $("#regMetrics").innerHTML = build(METRICS.regression);
-  $("#clsMetrics").innerHTML = build(METRICS.classification);
+
+ // ----- Performance -----
+
+
+async function renderPerformance() {
+  const regContainer = document.querySelector("#regMetrics");
+  const clsContainer = document.querySelector("#clsMetrics");
+
+  try {
+    const response = await fetch(`${CONFIG.API_BASE_URL}/metrics`);
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const result = await response.json();
+    console.log("Metrics received:", result);
+
+    // Classification cards
+    const cls = result.classification || {};
+    const clsMetrics = {
+      "Accuracy": cls["Accuracy"],
+      "Precision": cls["Precision"],
+      "Recall": cls["Recall"],
+      "F1-score": cls["F1-score"],
+      "ROC-AUC": cls["ROC-AUC"],
+      "Balanced Accuracy": cls["Balanced Accuracy"],
+      "Test samples": cls["test_samples"]
+    };
+
+    clsContainer.innerHTML = Object.entries(clsMetrics)
+      .map(([label, value]) => {
+        const percentage = label !== "Test samples";
+        const display = value == null
+          ? "—"
+          : percentage
+            ? `${(Number(value) * 100).toFixed(1)}%`
+            : value;
+
+        return card(label, display, "", "Evaluation result");
+      })
+      .join("");
+
+    // Regression cards
+    const reg = result.regression || {};
+    const regMetrics = {
+      "MAE (mg/kg)": reg["MAE"],
+      "RMSE (mg/kg)": reg["RMSE"],
+      "R²": reg["R2"],
+      "Test samples": reg["test_samples"],
+      "Training samples": reg["training_samples"]
+    };
+
+    regContainer.innerHTML = Object.entries(regMetrics)
+      .map(([label, value]) =>
+        card(
+          label,
+          value == null ? "—" : Number(value).toFixed(
+            Number.isInteger(Number(value)) ? 0 : 3
+          ),
+          "",
+          value == null ? "Not available" : "Evaluation result"
+        )
+      )
+      .join("");
+
+    regContainer.insertAdjacentHTML(
+      "beforeend",
+      `<p class="note">MAE and RMSE are measured in ${reg.target_unit || "mg/kg"}. Lower errors are better; R² closer to 1 indicates a better fit.</p>`
+    );
+
+  } catch (error) {
+    console.error("Metrics loading failed:", error);
+
+    regContainer.innerHTML =
+      `<p class="error">Regression metrics could not be loaded: ${error.message}</p>`;
+
+    clsContainer.innerHTML =
+      `<p class="error">Classification metrics could not be loaded: ${error.message}</p>`;
+  }
 }
 
 // ----- Prediction form -----
@@ -69,9 +169,13 @@ function collectPayload() {
 }
 
 function showResult(r, demo = false) {
-  const high = String(r.risk_label).toUpperCase() === "HIGH";
-  const pct = (v) => (v * 100).toFixed(1) + "%";
-  const conc = r.estimated_concentration_mg_kg;
+  const high = String(r.risk_label ?? "").toUpperCase().includes("HIGH");
+  const pct = (v) => (Number(v ?? 0) * 100).toFixed(1) + "%";
+
+  const probabilities = r.probabilities || {};
+  const lowProb = probabilities.low_risk ?? probabilities.low ?? 0;
+  const highProb = probabilities.high_risk ?? probabilities.high ?? 0;
+  const conc = r.concentration_mg_kg ?? r.estimated_concentration_mg_kg;
   const concHtml = high
     ? `<div class="conc">Estimated domoic acid concentration<br><b>${conc == null ? "—" : fmt(conc, 2) + " mg/kg"}</b></div>`
     : `<p class="note">A concentration estimate is shown only for high-risk predictions.</p>`;

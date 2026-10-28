@@ -12,8 +12,14 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import (
     classification_report,
     confusion_matrix,
-    balanced_accuracy_score
+    balanced_accuracy_score,
+    accuracy_score,
+    precision_score,
+    recall_score,
+    f1_score,
+    roc_auc_score
 )
+import json
 
 # --------------------------------------------------
 # 1. LOAD DATASET
@@ -35,21 +41,9 @@ if TARGET not in df.columns:
         "Check your CSV column names."
     )
 
-# --------------------------------------------------
-# 2. STANDARDIZE RECORD ORIGIN LABELS
-# --------------------------------------------------
-
-if "record_origin" in df.columns:
-    df["record_origin"] = "OBSERVED"
-
-    # Save the updated dataset
-    df.to_csv(DATA_PATH, index=False)
-
-    print("\nRecord origin counts:")
-    print(df["record_origin"].value_counts(dropna=False))
 
 # --------------------------------------------------
-# 3. PREPARE TARGET
+# 2. PREPARE TARGET AND AUDIT DATA ORIGIN
 # --------------------------------------------------
 
 df = df[df[TARGET].notna()].copy()
@@ -57,85 +51,79 @@ df[TARGET] = pd.to_numeric(df[TARGET], errors="coerce")
 df = df[df[TARGET].isin([0, 1])].copy()
 df[TARGET] = df[TARGET].astype(int)
 
+print("\nRecord origin counts:")
+if "record_origin" in df.columns:
+    print(df["record_origin"].value_counts(dropna=False))
+else:
+    print("No record_origin column available.")
+
 print("\nRisk label counts:")
 print(df[TARGET].value_counts().sort_index())
 
 # --------------------------------------------------
-# 4. REMOVE TARGET LEAKAGE
+# 3. SELECT ONLY PREDICTION-TIME FEATURES
 # --------------------------------------------------
 
-drop_columns = [
-    TARGET,
-    "risk_category",
-    "domoic_acid_concentration",
-    "DA_concentration",
-    "VALUE",
-    "reported_value",
-    "concentration_exact_mg_kg",
-    "measurement_qualifier",
-    "record_origin",
-    "is_exact_measurement",
-    "is_censored_measurement",
-    "toxin_name",
-    "toxin_code",
-    "biotoxin_group",
-    "units",
-    "units_description",
-    "synthetic",
-    "record_source",
-    "source_type",
+# Use only fields that could be available when making a prediction.
+# Do not include toxin measurements or fields derived from the target.
+
+allowed_features = [
+    "pressure_dbar",
+    "temperature_c",
+    "salinity",
+    "sigma_theta",
+    "light_transmission_pct",
+    "par",
+    "chlorophyll_a",
+    "dissolved_oxygen",
+    "oxygen_saturation_pct",
+    "sampling_depth_m",
+    "sampling_method",
+    "mollusc_type",
+    "species",
 ]
 
-X = df.drop(columns=drop_columns, errors="ignore")
-y = df[TARGET]
+available_features = [
+    col for col in allowed_features if col in df.columns
+]
 
-# Remove constant columns
+missing_features = [
+    col for col in allowed_features if col not in df.columns
+]
+
+if missing_features:
+    print("\nFeatures not found in CSV:", missing_features)
+
+if not available_features:
+    raise ValueError("None of the allowed prediction features exist.")
+
+X = df[available_features].copy()
+y = df[TARGET].copy()
+
+# Remove constant features
 X = X.loc[:, X.nunique(dropna=False) > 1]
 
-print("\n--- FEATURE AUDIT ---")
-print("Target column:", TARGET)
-print("Features used by model:")
+# Normalize categorical values
+for col in X.select_dtypes(include=["object", "category"]).columns:
+    X[col] = X[col].map(
+        lambda value: str(value) if pd.notna(value) else None
+    )
 
+print("\n--- FEATURE AUDIT ---")
+print("Target:", TARGET)
+print("Features used:")
 for col in X.columns:
     print("-", col)
 
-print("\nTarget distribution:")
-print(y.value_counts())
+print("\nExcluded fields include:")
+print("- Risk labels and categories")
+print("- Toxin concentrations and laboratory results")
+print("- Record origin and source identifiers")
+print("- Station, coordinates, and date/time fields")
 
 if X.shape[1] == 0:
     raise ValueError("No usable input features remain.")
 
-# --------------------------------------------------
-# 5. PROCESS DATE COLUMNS
-# --------------------------------------------------
-
-for col in list(X.columns):
-    if "date" in col.lower():
-        parsed = pd.to_datetime(X[col], errors="coerce")
-
-        if parsed.notna().any():
-            X[col + "_year"] = parsed.dt.year
-            X[col + "_month"] = parsed.dt.month
-            X[col + "_day"] = parsed.dt.day
-            X = X.drop(columns=[col])
-
-# Remove record identifier columns
-identifier_words = ["sample_id", "record_id", "row_id"]
-
-X = X.drop(
-    columns=[
-        c for c in X.columns
-        if c.lower() in identifier_words
-    ],
-    errors="ignore"
-)
-
-# Normalize categorical values
-for col in X.columns:
-    if X[col].dtype == "object":
-        X[col] = X[col].map(
-            lambda value: str(value) if pd.notna(value) else None
-        )
 
 # --------------------------------------------------
 # 6. CHECK CLASS BALANCE
@@ -208,11 +196,38 @@ model = Pipeline([
 
 model.fit(X_train, y_train)
 
+
 # --------------------------------------------------
 # 10. EVALUATE MODEL
 # --------------------------------------------------
 
 predictions = model.predict(X_test)
+probabilities = model.predict_proba(X_test)
+
+# Find the probability column belonging to class 1 (HIGH RISK)
+high_risk_index = list(model.classes_).index(1)
+high_risk_probabilities = probabilities[:, high_risk_index]
+
+# Calculate evaluation metrics
+metrics = {
+    "Accuracy": round(float(accuracy_score(y_test, predictions)), 4),
+    "Precision": round(float(precision_score(
+        y_test, predictions, pos_label=1, zero_division=0
+    )), 4),
+    "Recall": round(float(recall_score(
+        y_test, predictions, pos_label=1, zero_division=0
+    )), 4),
+    "F1-score": round(float(f1_score(
+        y_test, predictions, pos_label=1, zero_division=0
+    )), 4),
+    "ROC-AUC": round(float(roc_auc_score(
+        y_test, high_risk_probabilities
+    )), 4),
+    "Balanced Accuracy": round(float(
+        balanced_accuracy_score(y_test, predictions)
+    ), 4),
+    "test_samples": int(len(y_test))
+}
 
 print("\nClassification Report:")
 print(classification_report(
@@ -226,10 +241,16 @@ print(classification_report(
 print("\nConfusion Matrix:")
 print(confusion_matrix(y_test, predictions, labels=[0, 1]))
 
-print(
-    "\nBalanced Accuracy:",
-    round(balanced_accuracy_score(y_test, predictions), 4)
-)
+print("\nCLASSIFIER EVALUATION METRICS")
+for name, value in metrics.items():
+    print(f"{name}: {value}")
+
+# Save metrics for the dashboard integration
+with open("toxiguard_classification_metrics.json", "w") as file:
+    json.dump(metrics, file, indent=4)
+
+print("\nMetrics saved to toxiguard_classification_metrics.json")
+
 
 # --------------------------------------------------
 # 11. SAVE MODEL

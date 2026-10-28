@@ -11,6 +11,7 @@ from sklearn.preprocessing import OneHotEncoder
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+import json
 
 # ==================================================
 # 1. FILE PATHS
@@ -18,6 +19,7 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
 DATA_PATH = Path("Domoic_Acid.csv")
 MODEL_PATH = Path("toxiguard_concentration_random_forest.joblib")
+METRICS_PATH = Path("toxiguard_regression_metrics.json")
 
 if not DATA_PATH.exists():
     raise FileNotFoundError(f"Dataset not found: {DATA_PATH.resolve()}")
@@ -193,6 +195,23 @@ comparison = pd.DataFrame({
 })
 print(comparison.head(10).round(3).to_string(index=False))
 
+# ==================================================
+# 8. SAVE EVALUATION METRICS
+# ==================================================
+
+metrics = {
+    "MAE": round(float(mae), 3),
+    "RMSE": round(float(rmse), 3),
+    "R2": round(float(r2), 3) if np.isfinite(r2) else None,
+    "test_samples": int(len(y_test)),
+    "training_samples": int(len(y_train)),
+    "target_unit": "mg/kg"
+}
+
+with open(METRICS_PATH, "w", encoding="utf-8") as file:
+    json.dump(metrics, file, indent=4)
+
+print("\nRegression metrics saved to:", METRICS_PATH.resolve())
 # ==================================================
 # 8. SAVE MODEL
 # ==================================================

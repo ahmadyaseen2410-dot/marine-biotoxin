@@ -19,11 +19,9 @@
       <a href="#performance" data-page="performance">Model Performance</a>
       <a href="#about" data-page="about">About</a>
     </nav>
-    <div class="side-foot">Prototype · demo data only</div>
   </aside>
 
   <main>
-    <div class="demo-banner" id="demoBanner">DEMO DATA — placeholder values for layout design. Not real measurements or model output.</div>
 
     <section class="page" id="page-dashboard">
       <h1>Dashboard</h1>
@@ -34,7 +32,7 @@
 
     <section class="page" id="page-predict">
       <h1>Risk Prediction</h1>
-      <p class="sub">Enter sample measurements. The form sends a JSON request to the backend <code id="endpointLabel"></code>.</p>
+      <p class="sub">Enter sample measurements.<code id="endpointLabel"></code>.</p>
       <form id="predictForm" class="panel" novalidate>
         <h2>Environmental measurements</h2>
         <div class="grid" id="numericFields"></div>
@@ -61,7 +59,7 @@
 
     <section class="page" id="page-performance">
       <h1>Model Performance</h1>
-      <p class="sub">Values come from <code>js/config.js</code>. Replace the empty values with your evaluation results.</p>
+      <p class="sub">Evaluation metrics loaded from the ToxiGuard backend API.</p>
       <div class="panel"><h2>Regressor (concentration)</h2><div class="cards" id="regMetrics"></div></div>
       <div class="panel"><h2>Classifier (risk class)</h2><div class="cards" id="clsMetrics"></div></div>
     </section>
@@ -69,16 +67,14 @@
     <section class="page" id="page-about">
       <h1>About</h1>
       <div class="panel prose">
-        <h2>Project</h2>
-        <p>ToxiGuard is a university data science project for marine environmental monitoring. It helps screen shellfish sampling conditions for domoic acid risk, a toxin made by some marine algae.</p>
         <h2>Method</h2>
-        <p>Two Random Forest models are planned: a classifier that labels a sample LOW or HIGH risk, and a regressor that estimates concentration in mg/kg. The estimate is shown only when the sample is classed as high risk.</p>
+        <p>Two Random Forest models : a classifier that labels a sample LOW or HIGH risk, and a regressor that estimates concentration in mg/kg. The estimate is shown only when the sample is classed as high risk.</p>
         <h2>Data limits</h2>
         <p>Results depend on the training data: its location, season, species and sampling methods. Samples unlike the training data can give unreliable output. Small or uneven classes can also hide weak spots.</p>
         <h2>Estimates are not lab results</h2>
         <p><strong>Model output is an estimate, not a laboratory measurement.</strong> It must not be used alone for food safety, harvest or public health decisions. Confirm with approved laboratory testing.</p>
         <h2>Status</h2>
-        <p>The models are <strong>not connected</strong> in this prototype. All numbers shown on the dashboard are labelled demo data.</p>
+        <p>Two models are <strong>connected</strong> in this prototype.</p>
       </div>
     </section>
   </main>

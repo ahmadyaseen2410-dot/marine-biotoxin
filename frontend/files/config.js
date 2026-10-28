@@ -19,21 +19,34 @@ export const NUMERIC_FIELDS = [
   { key: "sampling_depth_m", label: "Sampling depth", unit: "m" },
 ];
 // PLACEHOLDER options. Replace with the exact categories used when you trained the models.
+
 export const CATEGORICAL_FIELDS = [
   {
     key: "sampling_method",
     label: "Sampling method",
-    options: ["Unknown"],
+    options: [
+      "Niskin bottle",
+      "Unknown",
+      "hose-sampler (Lindahl 1986)",
+    ],
   },
   {
     key: "mollusc_type",
     label: "Mollusc type",
-    options: ["Unknown"],
+    options: [
+      "European flat oyster",
+      "Mussel",
+      "Pacific oyster",
+    ],
   },
   {
     key: "species",
     label: "Species",
-    options: ["Unknown"],
+    options: [
+      "Magallana gigas",
+      "Mytilus galloprovincialis",
+      "Ostrea edulis",
+    ],
   },
 ];
 
@@ -45,7 +58,7 @@ export const METRICS = {
 
 // ---- DEMO placeholders (clearly labelled in the UI). Delete when real data is wired in. ----
 export const DEMO_DATASET = {
-  total: 1000, high: 280, low: 720,
+  total: 362, high: 83, low: 279,
   meanByClass: { labels: ["Temperature", "Salinity", "Chlorophyll-a", "Oxygen sat."], low: [12, 33, 3, 95], high: [15, 32, 8, 88] },
   chlorophyllBins: { labels: ["0–2", "2–4", "4–6", "6–8", "8–10", "10+"], counts: [320, 280, 190, 110, 60, 40] },
 };

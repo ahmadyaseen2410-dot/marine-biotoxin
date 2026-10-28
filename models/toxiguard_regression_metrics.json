@@ -1,0 +1,8 @@
+{
+    "MAE": 6.352,
+    "RMSE": 9.273,
+    "R2": 0.995,
+    "test_samples": 17,
+    "training_samples": 66,
+    "target_unit": "mg/kg"
+}

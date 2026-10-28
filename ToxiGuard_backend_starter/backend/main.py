@@ -6,12 +6,15 @@ import numpy as np
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
+import json
 
 # Place the two .joblib files and Domoic_Acid.csv in the backend folder.
 BASE_DIR = Path(__file__).resolve().parent
 CLASSIFIER_PATH = BASE_DIR / "toxiguard_random_forest.joblib"
 REGRESSOR_PATH = BASE_DIR / "toxiguard_concentration_random_forest.joblib"
 DATA_PATH = BASE_DIR / "Domoic_Acid.csv"
+METRICS_PATH = BASE_DIR / "toxiguard_classification_metrics.json"
+REGRESSION_METRICS_PATH = BASE_DIR / "toxiguard_regression_metrics.json"
 
 app = FastAPI(title="ToxiGuard API", version="1.0.0")
 
@@ -224,6 +227,41 @@ def make_regressor_frame(payload: PredictionRequest) -> pd.DataFrame:
         else:
             values[col] = np.nan
     return pd.DataFrame([values], columns=list(expected))
+
+@app.get("/metrics")
+def get_metrics():
+    response = {
+        "status": "success",
+        "classification": None,
+        "regression": None,
+        "warnings": []
+    }
+
+    metric_files = [
+        ("classification", METRICS_PATH),
+        ("regression", REGRESSION_METRICS_PATH),
+    ]
+
+    for name, path in metric_files:
+        if not path.exists():
+            response["warnings"].append(
+                f"{name.capitalize()} metrics file not found: {path}"
+            )
+            continue
+
+        try:
+            with open(path, "r", encoding="utf-8") as file:
+                response[name] = json.load(file)
+        except (json.JSONDecodeError, OSError) as exc:
+            response["warnings"].append(
+                f"Could not load {name} metrics: {exc}"
+            )
+
+    if response["classification"] is None or response["regression"] is None:
+        response["status"] = "partial"
+
+    return response
+
 
 @app.post("/predict")
 def predict(payload: PredictionRequest):
